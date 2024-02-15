@@ -8,6 +8,6 @@ import androidx.compose.runtime.Composable
 fun NoJoke(onButtonClick: () -> Unit) {
     Text("No Jokes Available!")
     Button(onClick = onButtonClick) {
-        Text(text = "Fetch Joke")
+        Text(text = "Try again")
     }
 }
