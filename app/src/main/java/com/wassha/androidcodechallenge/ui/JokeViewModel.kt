@@ -1,45 +1,36 @@
 package com.wassha.androidcodechallenge.ui
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
-import com.wassha.androidcodechallenge.data.Joke
-import com.wassha.androidcodechallenge.data.JokeRepository
+import androidx.lifecycle.viewModelScope
+import com.wassha.androidcodechallenge.domain.JokeRepository
+import com.wassha.androidcodechallenge.domain.models.JokeSource
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.launch
+import javax.inject.Inject
 
-data class JokeUiModel (val joke: String) {
-    companion object {
-        fun default() = JokeUiModel("Empty")
-    }
-}
+@HiltViewModel
+class JokeViewModel
+    @Inject
+    constructor(
+        private val repository: JokeRepository,
+    ) : ViewModel() {
+        val joke: MutableStateFlow<JokeScreenState<JokeSource>> = MutableStateFlow(JokeScreenState.Loading)
 
-fun Joke.toUiModel() = JokeUiModel(joke = value)
-
-class JokeViewModel(
-    private val repository: JokeRepository
-): ViewModel() {
-
-    val joke = MutableLiveData<JokeUiModel>()
-
-    init {
-        joke.value = JokeUiModel.default()
-    }
-
-    fun onResume() {
-        repository.fetchJoke().let { joke.value = it.toUiModel() }
-    }
-
-}
-
-class JokeViewModelFactory(
-    private val repository: JokeRepository,
-) : ViewModelProvider.Factory {
-
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(JokeViewModel::class.java)) {
-            @Suppress("UNCHECKED_CAST")
-            return JokeViewModel(repository) as T
+        init {
+            getJoke()
         }
-        throw IllegalArgumentException("Unknown ViewModel class")
+
+        fun getJoke() {
+            joke.value = JokeScreenState.Loading
+            viewModelScope.launch {
+                val jokeSource = repository.fetchJoke()
+                val jokeString = jokeSource.joke.joke
+                if (jokeString.isNotBlank()) {
+                    joke.value = JokeScreenState.Success(jokeSource)
+                } else {
+                    joke.value = JokeScreenState.Empty
+                }
+            }
+        }
     }
-}
